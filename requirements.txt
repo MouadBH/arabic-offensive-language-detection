@@ -1,0 +1,7 @@
+spacy==2.1.4
+pandas==0.24.2
+numpy==1.16.2
+emoji==0.5.4
+nltk==3.4
+scikit_learn==0.22.1
+selenium==3.141.0
