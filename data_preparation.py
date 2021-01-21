@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import nltk
 
-import spacy
+# import spacy
 from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
 from sklearn.utils import shuffle
 
