@@ -29,6 +29,9 @@ arabic_punctuations = '''`÷×؛<>_()*&^%][ـ،/:"؟.,'{}~¦+|!”…“–ـ'''
 english_punctuations = string.punctuation
 punctuations_list = arabic_punctuations + english_punctuations
 
+ar_stopwords_file = open('lib/ar_stopword.txt', 'r', encoding='utf-8') 
+ar_stopword = ar_stopwords_file.read().splitlines()
+
 ################## Data Processing for Arabic Text
 
 def take_a_shower(line):
@@ -48,11 +51,20 @@ def take_a_shower(line):
     # then remove punc,
     translator = str.maketrans('', '', punctuations_list)
     line = line.translate(translator)
+    
+    # remove longation
+    p_longation = re.compile(r'(.)\1+')
+    subst = r"\1\1"
+    line = re.sub(p_longation, subst, line)
 
-    line=remove_diacritics(normalize_arabic(line))
-
+    
+    # remove stopwords
     line = remove_stopwords(line)
-
+    line = extra_remove_ar_stopword(line, ar_stopword)
+    
+    # normalize & remove diacritis
+    line=remove_diacritics(normalize_arabic(line))
+    
     #replace number
     nline = [word if not hasDigits(word) else '<NUM>' for word in line.split()]
     line = ' '.join(nline)
@@ -126,6 +138,10 @@ def remove_diacritics(text):
 def remove_stopwords(text):
     filtered_sentence = [w for w in text.split() if not w in arb_stopwords]
     return ' '.join(filtered_sentence)
+
+def extra_remove_ar_stopword(text, ar_stopwords):
+    text_tokens = word_tokenize(text)
+    return " ".join([word for word in text_tokens if not word in ar_stopwords])
 
 
 def remove_punctuations(text):
