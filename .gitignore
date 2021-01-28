@@ -140,4 +140,5 @@ cython_debug/
 # Chrome driver
 chromedriver.exe
 
+# Models
 models/tfidf/randomforest_model.model
