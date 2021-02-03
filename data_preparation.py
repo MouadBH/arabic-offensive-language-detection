@@ -42,8 +42,8 @@ def take_a_shower(line):
     line = remove_urls(line)
     nline = [w if '@' not in w else 'USERIDX' for w in line.split()]
     line = ' '.join(nline)
-    line = line.replace('RT', '').replace('<LF>', '').replace('<br />','').replace('&quot;', '').replace('<url>', '')
-
+    line = re.sub(r'[a-zA-Z?]', '',line).strip() # remove no arabic characters
+    line = line.replace('RT', '').replace('<LF>', '').replace('<br />','').replace('&quot;', '').replace('<url>', '').replace('@User', '').replace('USERIDX', '')
 
     # add spaces between punc,
     line = line.translate(str.maketrans({key: " {0} ".format(key) for key in punctuations_list}))
@@ -68,7 +68,6 @@ def take_a_shower(line):
     #replace number
     nline = [word if not hasDigits(word) else '<NUM>' for word in line.split()]
     line = ' '.join(nline)
-
     return line
 
 def remove_urls (text):
