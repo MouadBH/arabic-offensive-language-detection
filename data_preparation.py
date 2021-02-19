@@ -43,7 +43,7 @@ def take_a_shower(line):
     nline = [w if '@' not in w else 'USERIDX' for w in line.split()]
     line = ' '.join(nline)
     line = re.sub(r'[a-zA-Z?]', '',line).strip() # remove no arabic characters
-    line = line.replace('RT', '').replace('<LF>', '').replace('<br />','').replace('&quot;', '').replace('<url>', '').replace('@User', '').replace('USERIDX', '').replace('<NUM>', '')
+    line = line.replace('RT', '').replace('<LF>', '').replace('<br />','').replace('&quot;', '').replace('<url>', '').replace('@User', '').replace('USERIDX', '').replace('<num>', '')
 
     # add spaces between punc,
     line = line.translate(str.maketrans({key: " {0} ".format(key) for key in punctuations_list}))
