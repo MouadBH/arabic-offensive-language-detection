@@ -1,30 +1,29 @@
-import numpy as np
 import io
-
-from keras.layers import Embedding, Dense, LSTM, Dropout, Input
-#from keras.layers import GRU, MaxPooling1D, Conv1D, Flatten
-from keras.preprocessing import text, sequence
-from keras.models import Model
-from keras.utils import np_utils
-
-from gensim.models.keyedvectors import KeyedVectors
-
-import pandas as pd
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from keras.preprocessing import text, sequence
+from gensim.models.keyedvectors import KeyedVectors
 
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, accuracy_score
 
 def get_embedding_matrix(word_index, embedding_index, vocab_dim):
+    """
+    words not found in embedding index will be all-zeros.
+    """
     print('Building embedding matrix...')
+    words_not_found = []
     embedding_matrix = np.zeros((len(word_index) + 1, vocab_dim))
     for word, i in word_index.items():
         try:
             embedding_matrix[i] = embedding_index.get_vector(word)
         except:
+            words_not_found.append(word)
             pass
     print('Embedding matrix built.')        
-    return embedding_matrix
+    return embedding_matrix, words_not_found
 
 
 def get_model_first(embedding_weights, word_index, vocab_dim, max_length, print_summary=True):
@@ -46,13 +45,6 @@ def get_model_first(embedding_weights, word_index, vocab_dim, max_length, print_
     if print_summary:
         model.summary()
     return model
-
-def train_fit_predict(model, x_train, x_test, y_train, batch_size, epochs):
-    history = model.fit(x_train, y_train,
-                        batch_size=batch_size,
-                        epochs=epochs, verbose=1)
-    score = model.predict(x_test)
-    return history, score, model
 
 def get_init_parameters(path, ext=None):
     if ext == 'vec':
@@ -78,14 +70,6 @@ def get_max_length(text_data, return_line=False):
         return long_line, max_length
     else:
         return max_length
-    
-def split_datasets(dataframe, test_size, header=True, seed=42):
-    x = dataframe.Comment.to_list()
-    y = dataframe.is_off.to_list()
-    max_length = get_max_length(x)
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=test_size, random_state=seed)
-    print('Dataset splited.')
-    return x_train, x_test, y_train, y_test, max_length
 
 def get_train_test(train_raw_text, test_raw_text, n_words, max_length):
     tokenizer = text.Tokenizer(num_words=n_words)
@@ -103,11 +87,10 @@ def class_str_2_ind(x_train, x_test, y_train, y_test, classes, n_words, max_leng
     y_encoder.fit(classes)
     y_train = y_encoder.transform(y_train)
     y_test = y_encoder.transform(y_test)
-    train_y_cat = np_utils.to_categorical(y_train, len(classes))
     x_vec_train, x_vec_test, word_index = get_train_test(x_train, x_test, n_words, max_length)
     print('Number of training examples: ' + str(len(x_vec_train)))
     print('Number of testing examples: ' + str(len(x_vec_test)))
-    return x_vec_train, x_vec_test, y_train, y_test, train_y_cat, word_index
+    return x_vec_train, x_vec_test, y_train, y_test, word_index
 
 def get_main_model(word_index, WORD_MODEL, EMBED_SIZE, MAX_TEXT_LENGTH):
     tmp = get_embedding_matrix(word_index, WORD_MODEL, EMBED_SIZE)
@@ -148,3 +131,70 @@ def convert_data(data, vocab, index):
         else:
             new.append(index[''])
     return new
+
+# =====================
+
+def train_fit(model, x_train, y_train, batch_size, epochs):
+    history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1, validation_split=0.2)
+    return history, model
+
+def evaluate_model(model, x_train, y_train, x_test, y_test):
+    loss, accuracy = model.evaluate(x_train, y_train)
+    print("Training Accuracy: {:.4f}".format(accuracy))
+    print("Training Loss: {:.4f}".format(loss))
+    loss_val, accuracy_val = model.evaluate(x_test, y_test, verbose=True)
+    print("Testing Accuracy:  {:.4f}".format(accuracy_val))
+    print("Testing Loss:  {:.4f}".format(loss_val))
+    
+    return accuracy, accuracy_val
+    
+def get_prediction(model, x_test):
+    y_pred = model.predict(x_test, verbose=1)
+    y_pred_bool = np.argmax(y_pred, axis=1)
+    y_pred = (y_pred > 0.5)
+#     print(classification_report(y_test, y_pred))
+    return y_pred
+    
+def get_optimal_epoch(history):
+    n = np.argmin(history.history['val_loss'])
+    print("Optimal epoch : {}".format(n))
+    print("Accuracy on train : {} %".format(np.round(history.history['accuracy'][n]*100, 2)))
+    print("Accuracy on test : {} %".format(np.round(history.history['val_accuracy'][n]*100, 2)))
+    print("Loss on train : {}".format(np.round(history.history['loss'][n]*100, 2)))
+    print("Loss on test : {}".format(np.round(history.history['val_loss'][n]*100, 2)))
+    return n
+    
+def show_train_history(history,train,validation, n):
+    plt.figure(figsize=(16, 8))
+    plt.plot(range(1, len(history.history[train])+1), history.history[train], label="train")
+    plt.plot(range(1, len(history.history[validation])+1), history.history[validation], label="validation")
+    plt.plot(n+1,history.history[validation][n],"r*", label="Opt.")
+    plt.legend()
+    plt.title(str(train) + " Curve")
+    plt.ylabel(train)
+    plt.xlabel("epochs")
+    plt.show()
+
+def save_model(model, folder, name, acc):
+    with open('./models/' + folder + '/' + name + '_acc_' + str(acc) + '.json', 'w') as f:
+        f.write(model.to_json())
+        f.close()
+
+    model.save_weights('./models/' + folder + '/' + name + '_weights_acc_' + str(acc) + '.h5')
+
+    model.save('./models/' + folder + '/' + name + '_acc_' + str(acc) + '.h5')
+    
+    print("Model Saved Successfully in ./models/" + folder + "/ as " + name + '_acc_' + str(acc))
+    
+def model_analyse(model, x_test, X_test, y_test):
+    pred_test = model.predict(x_test, verbose=True)
+    df_blind = pd.DataFrame({'REAL': y_test, 
+                             'PRED': pred_test.reshape(pred_test.shape[0],), 
+                             'TEXT': X_test})
+    df_blind = df_blind.reset_index()[['REAL', 'PRED', 'TEXT']]
+    df_blind.PRED = df_blind.PRED.round()
+    error_records = df_blind[df_blind.REAL != df_blind.PRED]
+    
+    print("Number of misclassified reviews: {} out of {}".format(error_records.shape[0], df_blind.shape[0]))
+    print("Blind Test Accuracy:  {:.4f}".format(accuracy_score(df_blind.REAL, df_blind.PRED)))
+    return df_blind
