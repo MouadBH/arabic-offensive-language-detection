@@ -42,6 +42,9 @@ def take_a_shower(line):
     line = remove_urls(line)
     nline = [w if '@' not in w else 'USERIDX' for w in line.split()]
     line = ' '.join(nline)
+    #replace number
+    nline = [word if not hasDigits(word) else '<NUM>' for word in line.split()]
+    line = ' '.join(nline)
     line = re.sub(r'[a-zA-Z?]', '',line).strip() # remove no arabic characters
     line = line.replace('RT', '').replace('<LF>', '').replace('<br />','').replace('&quot;', '').replace('<url>', '').replace('@User', '').replace('USERIDX', '').replace('<NUM>', '')
 
@@ -64,10 +67,7 @@ def take_a_shower(line):
     
     # normalize & remove diacritis
     line=remove_diacritics(normalize_arabic(line))
-    
-    #replace number
-    nline = [word if not hasDigits(word) else '<NUM>' for word in line.split()]
-    line = ' '.join(nline)
+
     return line
 
 def remove_urls (text):
